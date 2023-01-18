@@ -1,10 +1,12 @@
+mod frontend;
+use chrono::Utc;
 use config::{Config, File};
 use log::{error, info, log_enabled, warn, Level};
 use serde::Deserialize;
 use std::{env, path::Path};
 
 #[derive(Deserialize)]
-struct Checklist {
+pub struct Checklist {
     /// name of the todo
     name: String,
     /// if the user wants to, they can have the todo list restart on a schedule
@@ -50,15 +52,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     info!("loaded config!");
 
-    /*
-     * OwO whats this? :3333
     let native_options = eframe::NativeOptions::default();
     eframe::run_native(
         "eframe template",
         native_options,
-        Box::new(|cc| Box::new(eframe_template::TemplateApp::new(cc))),
+        Box::new(|cc| Box::new(frontend::Frontend::new(cc, checklists.checklist))),
     );
-    */
 
     Ok(())
 }
