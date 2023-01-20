@@ -1,44 +1,20 @@
 use chrono::{DateTime, Duration, Utc};
 use cron::Schedule;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::HashMap,
+    str::FromStr,
+    sync::{Arc, RwLock},
+};
 
 use crate::Checklist;
-
-/// checklist thats currently active
-struct ActiveChecklist {
-    name: String,
-    reset_on: Option<DateTime<Utc>>,
-    todo: HashMap<String, bool>,
-}
-
 pub struct Frontend {
-    checklists: Vec<ActiveChecklist>,
+    checklists: Arc<RwLock<Vec<Checklist>>>,
 }
 
 impl Frontend {
     /// Called once before the first frame.
-    pub fn new(cc: &eframe::CreationContext<'_>, checklists: Vec<Checklist>) -> Self {
-        let checklists = checklists
-            .iter()
-            .map(|checklist| {
-                let mut map: HashMap<String, bool> = HashMap::new();
-                for todo in checklist.todo.iter() {
-                    map.insert(todo.clone(), false);
-                }
-                let reset_on = checklist.reset_schedule.clone().and_then(|schedule| {
-                    Schedule::from_str(&format!("* {} * ", schedule))
-                        .unwrap()
-                        .upcoming(Utc)
-                        .next()
-                });
-                ActiveChecklist {
-                    name: checklist.name.clone(),
-                    reset_on,
-                    todo: map,
-                }
-            })
-            .collect();
+    pub fn new(cc: &eframe::CreationContext<'_>, checklists: Arc<RwLock<Vec<Checklist>>>) -> Self {
         Self { checklists }
     }
 }
@@ -62,7 +38,7 @@ impl eframe::App for Frontend {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.heading("checklists");
-            for checklist in &mut self.checklists {
+            for checklist in &mut *self.checklists.clone().write().unwrap() {
                 ui.group(|ui| {
                     ui.heading(&checklist.name);
                     if let Some(date) = checklist.reset_on {
@@ -73,7 +49,7 @@ impl eframe::App for Frontend {
                         ui.label(format!("resets in {}:{}:{}", hours, minutes, seconds));
                     }
                     egui::ScrollArea::vertical().show(ui, |ui| {
-                        for mut todo in &mut checklist.todo {
+                        for mut todo in &mut checklist.tasks {
                             ui.checkbox(&mut todo.1, todo.0);
                         }
                     });
